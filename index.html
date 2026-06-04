@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SWEP Impromptu Feedback Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1d2330;
+    --ink-soft:#4a5468;
+    --paper:#f4efe6;
+    --card:#fffdf8;
+    --line:#e3dac9;
+    --accent:#3a5a40;        /* deep eucalyptus green */
+    --accent-warm:#588157;
+    --gold:#c79a3a;
+    --danger:#b3401f;
+    --danger-soft:#f7e6df;
+    --shadow:0 1px 2px rgba(40,30,15,.06), 0 12px 30px -18px rgba(40,30,15,.35);
+    --radius:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Newsreader',Georgia,serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(88,129,87,.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(199,154,58,.10), transparent 55%),
+      var(--paper);
+    background-attachment:fixed;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:160px;
+  }
+  .wrap{max-width:680px;margin:0 auto;padding:24px 18px 0;}
+
+  /* Header */
+  header.app{
+    text-align:center;
+    padding:18px 8px 6px;
+  }
+  .eyebrow{
+    font-family:'Fraunces',serif;
+    letter-spacing:.32em;
+    text-transform:uppercase;
+    font-size:.66rem;
+    color:var(--accent-warm);
+    font-weight:600;
+  }
+  header.app h1{
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    font-size:clamp(1.6rem,5.5vw,2.1rem);
+    margin:.25rem 0 .15rem;
+    line-height:1.08;
+    letter-spacing:-.01em;
+  }
+  header.app p.sub{
+    margin:.1rem 0 1.1rem;
+    color:var(--ink-soft);
+    font-style:italic;
+    font-size:.98rem;
+  }
+  .rule{
+    height:3px;width:64px;margin:0 auto 1.4rem;
+    background:linear-gradient(90deg,var(--gold),var(--accent));
+    border-radius:3px;
+  }
+
+  /* Speaker name */
+  .name-field{margin-bottom:1.6rem;}
+  .name-field label{
+    display:block;
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:.8rem;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:.45rem;
+  }
+  .name-field input{
+    width:100%;
+    font-family:'Newsreader',serif;
+    font-size:1.15rem;
+    padding:.85rem 1rem;
+    border:1.5px solid var(--line);
+    border-radius:14px;
+    background:var(--card);
+    color:var(--ink);
+    box-shadow:var(--shadow);
+    transition:border-color .18s ease, box-shadow .18s ease;
+  }
+  .name-field input:focus{
+    outline:none;
+    border-color:var(--accent-warm);
+    box-shadow:0 0 0 4px rgba(88,129,87,.15);
+  }
+
+  /* progress */
+  .progress{
+    display:flex;align-items:center;gap:.6rem;
+    margin:0 2px 1.1rem;font-size:.85rem;color:var(--ink-soft);
+    font-family:'Fraunces',serif;font-weight:500;
+  }
+  .progress .bar{flex:1;height:7px;border-radius:7px;background:var(--line);overflow:hidden;}
+  .progress .bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent-warm),var(--accent));transition:width .35s cubic-bezier(.4,0,.2,1);}
+
+  /* Cards */
+  .card{
+    background:var(--card);
+    border:1.5px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 18px 20px;
+    margin-bottom:16px;
+    box-shadow:var(--shadow);
+    scroll-margin-top:18px;
+    transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  .card.missing{
+    border-color:var(--danger);
+    box-shadow:0 0 0 4px var(--danger-soft);
+    animation:nudge .4s ease;
+  }
+  @keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .card-head{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.95rem;}
+  .badge{
+    flex:none;
+    width:34px;height:34px;border-radius:10px;
+    display:grid;place-items:center;
+    background:linear-gradient(160deg,var(--accent-warm),var(--accent));
+    color:#fff;font-family:'Fraunces',serif;font-weight:700;font-size:1.05rem;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .card h2{
+    font-family:'Fraunces',serif;
+    font-size:1.12rem;font-weight:600;margin:0;line-height:1.2;
+  }
+  .card .subline{margin:.1rem 0 0;color:var(--ink-soft);font-size:.9rem;font-style:italic;}
+
+  /* Rating row */
+  .ratings{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;}
+  .ratings .opt input{position:absolute;opacity:0;width:0;height:0;}
+  .ratings .opt label{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:.15rem;
+    min-height:58px;
+    border:1.5px solid var(--line);
+    border-radius:13px;
+    background:#fbf7ef;
+    font-family:'Fraunces',serif;
+    font-weight:600;font-size:1.25rem;color:var(--ink-soft);
+    cursor:pointer;
+    transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease;
+    user-select:none;
+  }
+  .ratings .opt .tick{font-family:'Newsreader',serif;font-size:.58rem;font-style:normal;letter-spacing:.05em;text-transform:uppercase;opacity:.6;font-weight:400;}
+  .ratings .opt label:active{transform:scale(.94);}
+  .ratings .opt input:checked + label{
+    background:linear-gradient(160deg,var(--accent-warm),var(--accent));
+    border-color:var(--accent);
+    color:#fff;
+    box-shadow:0 6px 16px -8px rgba(58,90,64,.7);
+  }
+  .ratings .opt input:checked + label .tick{opacity:.85;}
+  .ratings .opt input:focus-visible + label{box-shadow:0 0 0 3px rgba(88,129,87,.4);}
+
+  .scale-legend{display:flex;justify-content:space-between;margin:.55rem 2px 0;font-size:.72rem;color:var(--ink-soft);font-family:'Fraunces',serif;}
+
+  /* Footer */
+  .footer{
+    position:fixed;left:0;right:0;bottom:0;
+    background:linear-gradient(180deg, rgba(244,239,230,0), var(--paper) 32%);
+    padding:18px 18px calc(18px + env(safe-area-inset-bottom,0));
+    z-index:20;
+  }
+  .footer-inner{max-width:680px;margin:0 auto;display:flex;gap:12px;}
+  button.btn{
+    flex:1;
+    font-family:'Fraunces',serif;font-weight:600;font-size:1.02rem;
+    border:none;border-radius:15px;padding:1rem;cursor:pointer;
+    transition:transform .12s ease, box-shadow .18s ease, background .18s ease;
+  }
+  button.btn:active{transform:translateY(1px) scale(.99);}
+  .btn-primary{
+    background:linear-gradient(160deg,var(--accent-warm),var(--accent));
+    color:#fff;flex:1.6;
+    box-shadow:0 10px 24px -12px rgba(58,90,64,.9);
+  }
+  .btn-secondary{
+    background:#ece4d4;color:var(--ink);border:1.5px solid var(--line);
+  }
+  .warn{
+    max-width:680px;margin:0 auto .7rem;
+    display:none;align-items:center;gap:.5rem;
+    background:var(--danger-soft);color:var(--danger);
+    border:1.5px solid #e8b9a8;border-radius:12px;
+    padding:.7rem .9rem;font-size:.92rem;font-family:'Fraunces',serif;font-weight:500;
+  }
+  .warn.show{display:flex;}
+
+  /* Output */
+  .output{display:none;margin:8px 0 20px;}
+  .output.show{display:block;animation:rise .4s ease;}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  .output-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.6rem;}
+  .output-head h2{font-family:'Fraunces',serif;font-size:1.15rem;margin:0;}
+  .copy-btn{
+    font-family:'Fraunces',serif;font-weight:600;font-size:.85rem;
+    border:1.5px solid var(--accent);background:var(--card);color:var(--accent);
+    border-radius:11px;padding:.5rem .9rem;cursor:pointer;
+    transition:background .15s ease,color .15s ease,transform .1s ease;
+    flex:none;
+  }
+  .copy-btn:active{transform:scale(.95);}
+  .copy-btn.done{background:var(--accent);color:#fff;}
+  textarea.report{
+    width:100%;min-height:320px;
+    font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;
+    font-size:.86rem;line-height:1.55;
+    padding:1rem;border:1.5px solid var(--line);border-radius:14px;
+    background:#fffdf8;color:var(--ink);resize:vertical;box-shadow:var(--shadow);
+  }
+  footer.credit{text-align:center;color:var(--ink-soft);font-size:.78rem;font-style:italic;padding:6px 0 2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div class="eyebrow">Satriwithaya · English Program</div>
+    <h1>Impromptu Feedback Tool</h1>
+    <p class="sub">Peer-judge feedback for impromptu speaking rotations</p>
+    <div class="rule"></div>
+  </header>
+
+  <div class="name-field">
+    <label for="speakerName">Speaker's Name</label>
+    <input type="text" id="speakerName" autocomplete="off" placeholder="Type the speaker's name…" />
+  </div>
+
+  <div class="progress">
+    <span id="progressText">0 / 5 rated</span>
+    <div class="bar"><span id="progressBar"></span></div>
+  </div>
+
+  <main id="cards"></main>
+</div>
+
+<div class="output wrap" id="outputArea">
+  <div class="output-head">
+    <h2>Generated Report</h2>
+    <button class="copy-btn" id="copyBtn" type="button">Copy to Clipboard</button>
+  </div>
+  <textarea class="report" id="reportText" readonly></textarea>
+</div>
+
+<footer class="credit wrap">SWEP Impromptu Feedback Tool · works fully offline</footer>
+
+<div class="footer">
+  <div class="warn" id="warnBox"></div>
+  <div class="footer-inner">
+    <button class="btn btn-primary" id="produceBtn" type="button">Produce Report</button>
+    <button class="btn btn-secondary" id="resetBtn" type="button">Reset Form</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ---- Content Feedback Matrix (from spec) ----
+const CRITERIA = [
+  {
+    key:"A", icon:"🗣️", title:"Body Language & Tone",
+    subline:"Posture, eye contact, gestures, vocal presence",
+    feedback:{
+      1:"You looked a bit stiff or hid your hands. Action: Next time, step away from the desk, plant your feet shoulder-width apart, and look up at the back wall to immediately break that nervous posture.",
+      2:"Your voice was clear, but nervous energy leaked out as pacing or fidgeting. Action: Try anchoring your feet and using the Precision Pinch gesture with your fingers to channel that extra adrenaline constructively.",
+      3:"Good overall posture, but you dropped eye contact when searching for words. Action: Instead of looking at the floor or ceiling when you think, try utilizing a deliberate thinking pause or nod while keeping your eyes on your audience.",
+      4:"Great open posture and steady eye contact! You looked highly professional. Action: To level up, use structural movement—deliberately step to a new spot on the floor when shifting from one main point to the next.",
+      5:"Masterful presence! Your natural smile kept the room engaged, and your hand gestures perfectly matched your tone. You completely owned the visual channel."
+    }
+  },
+  {
+    key:"B", icon:"🎯", title:"Topic Adherence & Completeness",
+    subline:"Staying on prompt and answering it fully",
+    feedback:{
+      1:"The speech lost track of the prompt almost immediately. Action: If you feel stuck, spend your first 5 seconds literally repeating or rephrasing the question out loud to give your brain a clear track to follow.",
+      2:"You touched on the main topic briefly but drifted into unrelated stories. Action: Keep your focus narrow. Pick one main argument and stick to it rather than trying to cover too many different ideas.",
+      3:"You answered the prompt safely, but it felt a little incomplete. Action: Flesh out your response by introducing a quick 'A/B contrast scenario' (e.g., 'While some people choose X, looking at Y shows us a different story').",
+      4:"Very thorough response! You hit all aspects of the prompt directly and confidently. Action: Try backing up your main point with one deeply specific, concrete real-world example to maximize your credibility.",
+      5:"Incredible depth of argument. You dissected the prompt from multiple angles and covered it fully without a single moment of fluff. Brilliant precision."
+    }
+  },
+  {
+    key:"C", icon:"🧭", title:"Flow & Structure",
+    subline:"Clear opening, signposting, and a clean landing",
+    feedback:{
+      1:"The ideas felt chaotic with no clear beginning or end. Action: Force a structure early. Start with a 1-sentence opening hook, then literally use your fingers to count off: 'First... Second...' to anchor your thoughts.",
+      2:"You jumped straight into the middle of your point and stopped abruptly. Action: Build a clean exit strategy. Even a simple transition phrase like 'And that is why I believe...' gives your speech a polished landing.",
+      3:"You had a clear introduction and conclusion, but the middle sections blurred together. Action: Use strong vocal signposts like 'however,' 'consequently,' or 'on the other hand' to tell us exactly when you are changing lanes.",
+      4:"Excellent, logical flow. Your argument was very easy to track from start to finish. Action: Try experimenting with the Weighing Scales hand gesture to visually separate your pros and cons for the audience.",
+      5:"Flawless organization! Your structural transitions were so seamless it felt like you were reading from a pre-written outline rather than speaking off the cuff."
+    }
+  },
+  {
+    key:"D", icon:"⏱️", title:"Time Management",
+    subline:"Pacing ideas evenly across the clock",
+    feedback:{
+      1:"The speech ended way too fast. Action: Don't race to finish. Slow your vocal pace down, take deep breaths, and expand on why your main point matters.",
+      2:"You ran out of points early and ended up repeating yourself to fill the remaining time. Action: If you hit a wall, pivot to the future or a solution (e.g., 'Looking ahead, the best way to handle this is...').",
+      3:"Good effort, but you scrambled at the very end when you realized the clock was ticking down. Action: Keep an eye on your judge's visual signals so you can smoothly start your conclusion sentence with 10 seconds remaining.",
+      4:"Perfect pacing! You distributed your ideas beautifully across the clock without overextending or rushing. Highly professional time awareness.",
+      5:"Masterclass in clock management. You wrapped up your final, concluding syllable precisely as the timer hit zero. Your internal pacing rhythm is immaculate."
+    }
+  },
+  {
+    key:"E", icon:"💬", title:"Response to Follow-Up Question",
+    subline:"Composure and depth when challenged on the spot",
+    feedback:{
+      1:"You froze or changed the subject when asked the follow-up question. Action: Never panic! Buy yourself 3 seconds of thinking time by starting with an anchor phrase like, 'That is a fascinating question, let me consider that...'.",
+      2:"You gave a generic 'yes/no' answer without unpacking it. Action: Always treat a follow-up question as a mini-speech. State your stance, and immediately anchor it with a big 'Because...' to explain your logic.",
+      3:"You answered the question directly, but your explanation repeated points you already made in the speech. Action: Try to introduce a completely fresh perspective or a specific situational example to validate your answer.",
+      4:"Sharp comeback! You handled an unexpected question with logic, maturity, and great composure. You linked your answer cleanly back to your core thesis.",
+      5:"Absolute lightning reflexes. You didn't just answer the question; you seamlessly integrated it to elevate your entire presentation. Exceptional agility under pressure."
+    }
+  }
+];
+
+const SCALE_LABELS = {1:"Needs work",2:"Developing",3:"Solid",4:"Strong",5:"Masterful"};
+
+// ---- Single source of truth for state ----
+let state = {}; // { A:null, B:null, ... }
+function freshState(){ const s={}; CRITERIA.forEach(c=>s[c.key]=null); return s; }
+
+const cardsEl = document.getElementById("cards");
+const nameInput = document.getElementById("speakerName");
+const warnBox = document.getElementById("warnBox");
+const outputArea = document.getElementById("outputArea");
+const reportText = document.getElementById("reportText");
+const copyBtn = document.getElementById("copyBtn");
+const progressText = document.getElementById("progressText");
+const progressBar = document.getElementById("progressBar");
+
+// ---- Build the UI ----
+function buildCards(){
+  state = freshState();
+  cardsEl.innerHTML = "";
+  CRITERIA.forEach((c,i)=>{
+    const card = document.createElement("section");
+    card.className = "card";
+    card.id = "card-" + c.key;
+
+    const opts = [1,2,3,4,5].map(n=>`
+      <div class="opt">
+        <input type="radio" id="r-${c.key}-${n}" name="crit-${c.key}" value="${n}">
+        <label for="r-${c.key}-${n}">${n}<span class="tick">${SCALE_LABELS[n]}</span></label>
+      </div>`).join("");
+
+    card.innerHTML = `
+      <div class="card-head">
+        <div class="badge">${c.icon}</div>
+        <div>
+          <h2>${c.title}</h2>
+          <p class="subline">${c.subline}</p>
+        </div>
+      </div>
+      <div class="ratings">${opts}</div>
+      <div class="scale-legend"><span>1 · weak</span><span>5 · strong</span></div>`;
+    cardsEl.appendChild(card);
+  });
+
+  // Delegate change events
+  cardsEl.querySelectorAll('input[type="radio"]').forEach(r=>{
+    r.addEventListener("change", e=>{
+      const key = e.target.name.replace("crit-","");
+      state[key] = parseInt(e.target.value,10);
+      document.getElementById("card-"+key).classList.remove("missing");
+      hideWarn();
+      updateProgress();
+    });
+  });
+  updateProgress();
+}
+
+function updateProgress(){
+  const done = CRITERIA.filter(c=>state[c.key]!==null).length;
+  progressText.textContent = `${done} / 5 rated`;
+  progressBar.style.width = (done/5*100) + "%";
+}
+
+function showWarn(msg){ warnBox.textContent = "⚠ " + msg; warnBox.classList.add("show"); }
+function hideWarn(){ warnBox.classList.remove("show"); }
+
+// ---- Report generation ----
+function buildReport(){
+  const name = nameInput.value.trim() || "(unnamed speaker)";
+  const total = CRITERIA.reduce((sum,c)=>sum+state[c.key],0);
+  const lines = [];
+  lines.push("*** SWEP IMPROMPTU SPEECH REPORT ***");
+  lines.push("Speaker: " + name);
+  lines.push("Overall: " + total + " / 25");
+  lines.push("");
+  CRITERIA.forEach(c=>{
+    const score = state[c.key];
+    lines.push(`${c.icon} ${c.title} (Score: ${score}/5)`);
+    lines.push("-> " + c.feedback[score]);
+    lines.push("");
+  });
+  lines.push("Keep practising — every round makes the next one easier. 🌟");
+  return lines.join("\n");
+}
+
+document.getElementById("produceBtn").addEventListener("click", ()=>{
+  // Validation
+  const missing = CRITERIA.filter(c=>state[c.key]===null);
+  if(missing.length){
+    missing.forEach(c=>document.getElementById("card-"+c.key).classList.add("missing"));
+    showWarn(`Please rate all 5 criteria first (${missing.length} still missing).`);
+    const firstCard = document.getElementById("card-"+missing[0].key);
+    firstCard.scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
+  hideWarn();
+  reportText.value = buildReport();
+  outputArea.classList.add("show");
+  copyBtn.classList.remove("done");
+  copyBtn.textContent = "Copy to Clipboard";
+  outputArea.scrollIntoView({behavior:"smooth",block:"start"});
+});
+
+// ---- Copy ----
+copyBtn.addEventListener("click", async ()=>{
+  const text = reportText.value;
+  let ok = false;
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text); ok = true;
+    } else { throw new Error("fallback"); }
+  }catch(_){
+    reportText.removeAttribute("readonly");
+    reportText.select(); reportText.setSelectionRange(0, text.length);
+    try{ ok = document.execCommand("copy"); }catch(e){ ok = false; }
+    reportText.setAttribute("readonly","");
+  }
+  copyBtn.textContent = ok ? "Copied ✓" : "Press ⌘/Ctrl+C";
+  copyBtn.classList.toggle("done", ok);
+  setTimeout(()=>{ copyBtn.textContent = "Copy to Clipboard"; copyBtn.classList.remove("done"); }, 2200);
+});
+
+// ---- Reset: strictly clear ALL DOM + JS state ----
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  nameInput.value = "";
+  reportText.value = "";
+  cardsEl.querySelectorAll('input[type="radio"]').forEach(r=>{ r.checked = false; });
+  cardsEl.querySelectorAll('.card').forEach(c=>c.classList.remove("missing"));
+  state = freshState();             // wipe underlying state object
+  outputArea.classList.remove("show");
+  hideWarn();
+  updateProgress();
+  window.scrollTo({top:0,behavior:"smooth"});
+  nameInput.focus();
+});
+
+// ---- Init (no selections by default) ----
+buildCards();
+</script>
+</body>
+</html>
