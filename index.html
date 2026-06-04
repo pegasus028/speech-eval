@@ -204,7 +204,7 @@
   .warn.show{display:flex;}
 
   /* Output */
-  .output{display:none;margin:8px 0 20px;}
+  .output{display:none;margin:8px 0 24px;}
   .output.show{display:block;animation:rise .4s ease;}
   @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   .output-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.6rem;}
@@ -218,13 +218,53 @@
   }
   .copy-btn:active{transform:scale(.95);}
   .copy-btn.done{background:var(--accent);color:#fff;}
-  textarea.report{
-    width:100%;min-height:320px;
-    font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;
-    font-size:.86rem;line-height:1.55;
-    padding:1rem;border:1.5px solid var(--line);border-radius:14px;
-    background:#fffdf8;color:var(--ink);resize:vertical;box-shadow:var(--shadow);
+
+  /* Rendered report card — fits one screen, no scroll */
+  .report-card{
+    background:#fffdf8;
+    border:1.5px solid var(--line);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    padding:clamp(14px,3.5vw,20px);
+    border-top:4px solid var(--accent);
   }
+  .report-card .rc-title{
+    font-family:'Fraunces',serif;font-weight:700;
+    font-size:clamp(.95rem,3.6vw,1.1rem);
+    letter-spacing:.04em;color:var(--accent);margin:0 0 .15rem;
+  }
+  .report-card .rc-meta{
+    display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;
+    border-bottom:1.5px solid var(--line);padding-bottom:.55rem;margin-bottom:.55rem;
+    font-family:'Fraunces',serif;
+  }
+  .report-card .rc-speaker{font-weight:600;font-size:clamp(1rem,4vw,1.15rem);color:var(--ink);}
+  .report-card .rc-total{font-weight:700;color:var(--accent);font-size:clamp(.95rem,3.8vw,1.1rem);white-space:nowrap;}
+  .rc-item{padding:.42rem 0;border-bottom:1px dashed var(--line);}
+  .rc-item:last-child{border-bottom:none;}
+  .rc-item .rc-line{
+    display:flex;align-items:baseline;gap:.45rem;
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:clamp(.82rem,3.3vw,.95rem);line-height:1.25;
+  }
+  .rc-item .rc-icon{flex:none;font-size:1em;}
+  .rc-item .rc-name{flex:1;color:var(--ink);}
+  .rc-item .rc-score{
+    flex:none;font-weight:700;color:#fff;background:var(--accent-warm);
+    border-radius:7px;padding:.05rem .42rem;font-size:.8em;
+  }
+  .rc-item .rc-fb{
+    margin:.18rem 0 0 1.45rem;
+    font-size:clamp(.78rem,3.15vw,.9rem);line-height:1.34;color:var(--ink-soft);
+  }
+  .rc-item .rc-fb b{color:var(--accent);font-weight:600;}
+  .report-card .rc-foot{
+    margin-top:.55rem;padding-top:.5rem;border-top:1.5px solid var(--line);
+    font-family:'Fraunces',serif;font-size:clamp(.78rem,3.2vw,.88rem);
+    color:var(--ink-soft);font-style:italic;text-align:center;
+  }
+  .visually-hidden{position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;}
+
   footer.credit{text-align:center;color:var(--ink-soft);font-size:.78rem;font-style:italic;padding:6px 0 2px;}
 </style>
 </head>
@@ -248,17 +288,18 @@
   </div>
 
   <main id="cards"></main>
-</div>
 
-<div class="output wrap" id="outputArea">
-  <div class="output-head">
-    <h2>Generated Report</h2>
-    <button class="copy-btn" id="copyBtn" type="button">Copy to Clipboard</button>
+  <div class="output" id="outputArea">
+    <div class="output-head">
+      <h2>Generated Report</h2>
+      <button class="copy-btn" id="copyBtn" type="button">Copy to Clipboard</button>
+    </div>
+    <div class="report-card" id="reportCard"></div>
+    <textarea class="visually-hidden" id="reportText" readonly aria-hidden="true" tabindex="-1"></textarea>
   </div>
-  <textarea class="report" id="reportText" readonly></textarea>
-</div>
 
-<footer class="credit wrap">SWEP Impromptu Feedback Tool · works fully offline</footer>
+  <footer class="credit">SWEP Impromptu Feedback Tool · works fully offline</footer>
+</div>
 
 <div class="footer">
   <div class="warn" id="warnBox"></div>
@@ -332,6 +373,45 @@ const CRITERIA = [
 
 const SCALE_LABELS = {1:"Needs work",2:"Developing",3:"Solid",4:"Strong",5:"Masterful"};
 
+// Condensed on-screen feedback (fits one phone screen). <b>…</b> marks the action.
+const SHORT = {
+  A:{
+    1:"Looked stiff / hid hands. <b>Plant feet, look at the back wall.</b>",
+    2:"Clear voice, but fidgety energy. <b>Anchor feet; use the Precision Pinch.</b>",
+    3:"Good posture, lost eye contact when thinking. <b>Use a thinking pause, eyes up.</b>",
+    4:"Open posture, steady eye contact. <b>Step to a new spot for each main point.</b>",
+    5:"Masterful presence — smile and gestures owned the room."
+  },
+  B:{
+    1:"Lost the prompt fast. <b>Rephrase the question aloud first.</b>",
+    2:"Drifted into side stories. <b>Pick one argument and stick to it.</b>",
+    3:"Safe but incomplete. <b>Add an A/B contrast scenario.</b>",
+    4:"Thorough, all aspects hit. <b>Add one concrete real-world example.</b>",
+    5:"Incredible depth — covered every angle with no fluff."
+  },
+  C:{
+    1:"No clear start or end. <b>Open with a hook, count 'First… Second…'.</b>",
+    2:"Started mid-point, stopped abruptly. <b>Add an exit line: 'That is why…'.</b>",
+    3:"Clear intro/outro, blurry middle. <b>Signpost: 'however', 'consequently'.</b>",
+    4:"Logical, easy to track. <b>Try the Weighing Scales gesture for pros/cons.</b>",
+    5:"Flawless structure — seamless transitions, sounded scripted."
+  },
+  D:{
+    1:"Ended far too fast. <b>Slow down; explain why your point matters.</b>",
+    2:"Ran out early, repeated. <b>Pivot to a solution: 'Looking ahead…'.</b>",
+    3:"Scrambled at the end. <b>Watch the judge; conclude with 10s left.</b>",
+    4:"Perfect pacing across the clock — professional time awareness.",
+    5:"Masterclass — final word landed exactly on zero."
+  },
+  E:{
+    1:"Froze / changed subject. <b>Anchor: 'Let me consider that…'.</b>",
+    2:"Plain yes/no answer. <b>Treat it as a mini-speech: stance + 'Because…'.</b>",
+    3:"Answered, but repeated yourself. <b>Add a fresh angle or example.</b>",
+    4:"Sharp comeback — composed and tied back to your thesis.",
+    5:"Lightning reflexes — turned the question into an upgrade."
+  }
+};
+
 // ---- Single source of truth for state ----
 let state = {}; // { A:null, B:null, ... }
 function freshState(){ const s={}; CRITERIA.forEach(c=>s[c.key]=null); return s; }
@@ -341,6 +421,7 @@ const nameInput = document.getElementById("speakerName");
 const warnBox = document.getElementById("warnBox");
 const outputArea = document.getElementById("outputArea");
 const reportText = document.getElementById("reportText");
+const reportCard = document.getElementById("reportCard");
 const copyBtn = document.getElementById("copyBtn");
 const progressText = document.getElementById("progressText");
 const progressBar = document.getElementById("progressBar");
@@ -396,7 +477,8 @@ function showWarn(msg){ warnBox.textContent = "⚠ " + msg; warnBox.classList.ad
 function hideWarn(){ warnBox.classList.remove("show"); }
 
 // ---- Report generation ----
-function buildReport(){
+// Full text (for clipboard) — keeps the complete spec feedback.
+function buildReportText(){
   const name = nameInput.value.trim() || "(unnamed speaker)";
   const total = CRITERIA.reduce((sum,c)=>sum+state[c.key],0);
   const lines = [];
@@ -414,6 +496,30 @@ function buildReport(){
   return lines.join("\n");
 }
 
+// On-screen card (condensed, fits one phone screen).
+function renderReportCard(){
+  const name = nameInput.value.trim() || "(unnamed speaker)";
+  const total = CRITERIA.reduce((sum,c)=>sum+state[c.key],0);
+  let html = `<p class="rc-title">SWEP Impromptu Speech Report</p>
+    <div class="rc-meta"><span class="rc-speaker">${escapeHtml(name)}</span>
+    <span class="rc-total">${total} / 25</span></div>`;
+  CRITERIA.forEach(c=>{
+    const score = state[c.key];
+    html += `<div class="rc-item">
+      <div class="rc-line"><span class="rc-icon">${c.icon}</span>
+      <span class="rc-name">${c.title}</span>
+      <span class="rc-score">${score}/5</span></div>
+      <div class="rc-fb">${SHORT[c.key][score]}</div>
+    </div>`;
+  });
+  html += `<div class="rc-foot">Keep practising — every round makes the next one easier. 🌟</div>`;
+  reportCard.innerHTML = html;
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+}
+
 document.getElementById("produceBtn").addEventListener("click", ()=>{
   // Validation
   const missing = CRITERIA.filter(c=>state[c.key]===null);
@@ -425,7 +531,8 @@ document.getElementById("produceBtn").addEventListener("click", ()=>{
     return;
   }
   hideWarn();
-  reportText.value = buildReport();
+  renderReportCard();
+  reportText.value = buildReportText();
   outputArea.classList.add("show");
   copyBtn.classList.remove("done");
   copyBtn.textContent = "Copy to Clipboard";
@@ -455,6 +562,7 @@ copyBtn.addEventListener("click", async ()=>{
 document.getElementById("resetBtn").addEventListener("click", ()=>{
   nameInput.value = "";
   reportText.value = "";
+  reportCard.innerHTML = "";
   cardsEl.querySelectorAll('input[type="radio"]').forEach(r=>{ r.checked = false; });
   cardsEl.querySelectorAll('.card').forEach(c=>c.classList.remove("missing"));
   state = freshState();             // wipe underlying state object
