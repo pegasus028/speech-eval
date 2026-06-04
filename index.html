@@ -44,12 +44,15 @@
     padding:18px 8px 6px;
   }
   .eyebrow{
+    display:inline-block;
     font-family:'Fraunces',serif;
     letter-spacing:.32em;
     text-transform:uppercase;
     font-size:.66rem;
     color:var(--accent-warm);
     font-weight:600;
+    transform-origin:center top;
+    white-space:nowrap;
   }
   header.app h1{
     font-family:'Fraunces',serif;
@@ -271,8 +274,8 @@
 <body>
 <div class="wrap">
   <header class="app">
-    <div class="eyebrow">Satriwithaya · English Program</div>
-    <h1>Impromptu Feedback Tool</h1>
+    <div class="eyebrow" id="eyebrow">Satriwithaya · English Program</div>
+    <h1 id="appTitle">Impromptu Feedback Tool</h1>
     <p class="sub">Peer-judge feedback for impromptu speaking rotations</p>
     <div class="rule"></div>
   </header>
@@ -572,6 +575,25 @@ document.getElementById("resetBtn").addEventListener("click", ()=>{
   window.scrollTo({top:0,behavior:"smooth"});
   nameInput.focus();
 });
+
+// ---- Match eyebrow width to the main title width ----
+function fitEyebrow(){
+  const eb = document.getElementById("eyebrow");
+  const title = document.getElementById("appTitle");
+  if(!eb || !title) return;
+  eb.style.transform = "scaleX(1)";          // reset before measuring
+  const ebW = eb.getBoundingClientRect().width;
+  const titleW = title.getBoundingClientRect().width;
+  if(ebW > 0 && titleW > 0){
+    // Target width = midpoint between the eyebrow's natural width and the title width
+    const targetW = (ebW + titleW) / 2;
+    eb.style.transform = "scaleX(" + (targetW / ebW).toFixed(4) + ")";
+  }
+}
+window.addEventListener("resize", fitEyebrow);
+if(document.fonts && document.fonts.ready){ document.fonts.ready.then(fitEyebrow); }
+window.addEventListener("load", fitEyebrow);
+fitEyebrow();
 
 // ---- Init (no selections by default) ----
 buildCards();
