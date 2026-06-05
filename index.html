@@ -75,8 +75,14 @@
   }
 
   /* Speaker name */
-  .name-field{margin-bottom:1.6rem;}
-  .name-field label{
+  .roster-fields{
+    display:grid;
+    grid-template-columns:0.85fr 1.15fr;
+    gap:12px;
+    margin-bottom:1.6rem;
+  }
+  @media(max-width:380px){ .roster-fields{grid-template-columns:1fr;} }
+  .field label{
     display:block;
     font-family:'Fraunces',serif;
     font-weight:600;
@@ -86,23 +92,30 @@
     color:var(--ink-soft);
     margin-bottom:.45rem;
   }
-  .name-field input{
+  .field select{
     width:100%;
     font-family:'Newsreader',serif;
     font-size:1.15rem;
-    padding:.85rem 1rem;
+    padding:.85rem 2.4rem .85rem 1rem;
     border:1.5px solid var(--line);
     border-radius:14px;
-    background:var(--card);
+    background-color:var(--card);
     color:var(--ink);
     box-shadow:var(--shadow);
     transition:border-color .18s ease, box-shadow .18s ease;
+    cursor:pointer;
+    -webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23588157' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 1rem center;
   }
-  .name-field input:focus{
+  .field select:focus{
     outline:none;
     border-color:var(--accent-warm);
     box-shadow:0 0 0 4px rgba(88,129,87,.15);
   }
+  .field select:disabled{opacity:.55;cursor:not-allowed;}
+  .field select.placeholder{color:var(--ink-soft);font-style:italic;}
 
   /* progress */
   .progress{
@@ -280,9 +293,19 @@
     <div class="rule"></div>
   </header>
 
-  <div class="name-field">
-    <label for="speakerName">Speaker's Name</label>
-    <input type="text" id="speakerName" autocomplete="off" placeholder="Type the speaker's name…" />
+  <div class="roster-fields">
+    <div class="field">
+      <label for="classSelect">Class</label>
+      <select id="classSelect" class="placeholder">
+        <option value="" disabled selected>Select…</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="nicknameSelect">Nickname</label>
+      <select id="nicknameSelect" class="placeholder" disabled>
+        <option value="" disabled selected>Select class first…</option>
+      </select>
+    </div>
   </div>
 
   <div class="progress">
@@ -314,6 +337,9 @@
 
 <script>
 "use strict";
+
+// ---- Roster data (from M2-Roster.xlsx) ----
+const ROSTER = {"M2/1": ["Cheraim", "Proud", "Jean", "Jiya", "Janjao", "Raya", "Kaimook", "Rada", "Chyechye", "Grape", "Sol", "Anja", "Lookbua", "PunPun", "Meimei", "Prang", "Emmy", "Kao", "Jelly", "Pordee", "FinFin", "Kaohom", "Cerncern", "Yuri", "Shalis", "Hana", "Alice", "Yu", "Saiya", "Rica"], "M2/2": ["JJ", "Ariel", "Cher", "Nita", "Proud", "Miki", "Nada", "Bambam", "Tanya", "Namkhing", "Phing", "Pear", "Munich", "Melbourne", "Kaowpun", "Nana", "Gourney", "Peach", "Plume", "Cartoon", "Venice", "Khongkwan", "Taya", "Nirin", "Meiling", "Anchan", "Gut", "Azmy"]};
 
 // ---- Content Feedback Matrix (from spec) ----
 const CRITERIA = [
@@ -420,7 +446,8 @@ let state = {}; // { A:null, B:null, ... }
 function freshState(){ const s={}; CRITERIA.forEach(c=>s[c.key]=null); return s; }
 
 const cardsEl = document.getElementById("cards");
-const nameInput = document.getElementById("speakerName");
+const classSelect = document.getElementById("classSelect");
+const nicknameSelect = document.getElementById("nicknameSelect");
 const warnBox = document.getElementById("warnBox");
 const outputArea = document.getElementById("outputArea");
 const reportText = document.getElementById("reportText");
@@ -428,6 +455,48 @@ const reportCard = document.getElementById("reportCard");
 const copyBtn = document.getElementById("copyBtn");
 const progressText = document.getElementById("progressText");
 const progressBar = document.getElementById("progressBar");
+
+// ---- Populate roster dropdowns ----
+function populateClasses(){
+  const classes = Object.keys(ROSTER).sort();
+  classes.forEach(cls=>{
+    const o = document.createElement("option");
+    o.value = cls; o.textContent = cls;
+    classSelect.appendChild(o);
+  });
+}
+function populateNicknames(cls){
+  // reset
+  nicknameSelect.innerHTML = '<option value="" disabled selected>Select…</option>';
+  nicknameSelect.classList.add("placeholder");
+  if(cls && ROSTER[cls]){
+    ROSTER[cls].forEach(nick=>{
+      const o = document.createElement("option");
+      o.value = nick; o.textContent = nick;
+      nicknameSelect.appendChild(o);
+    });
+    nicknameSelect.disabled = false;
+  } else {
+    nicknameSelect.disabled = true;
+    nicknameSelect.innerHTML = '<option value="" disabled selected>Select class first…</option>';
+  }
+}
+classSelect.addEventListener("change", ()=>{
+  classSelect.classList.remove("placeholder");
+  populateNicknames(classSelect.value);
+  hideWarn();
+});
+nicknameSelect.addEventListener("change", ()=>{
+  nicknameSelect.classList.remove("placeholder");
+  hideWarn();
+});
+
+function getSpeaker(){
+  const cls = classSelect.value;
+  const nick = nicknameSelect.value;
+  if(cls && nick) return { cls, nick, label: nick + " (" + cls + ")" };
+  return null;
+}
 
 // ---- Build the UI ----
 function buildCards(){
@@ -482,7 +551,8 @@ function hideWarn(){ warnBox.classList.remove("show"); }
 // ---- Report generation ----
 // Full text (for clipboard) — keeps the complete spec feedback.
 function buildReportText(){
-  const name = nameInput.value.trim() || "(unnamed speaker)";
+  const sp = getSpeaker();
+  const name = sp ? sp.label : "(no speaker selected)";
   const total = CRITERIA.reduce((sum,c)=>sum+state[c.key],0);
   const lines = [];
   lines.push("*** SWEP IMPROMPTU SPEECH REPORT ***");
@@ -501,10 +571,12 @@ function buildReportText(){
 
 // On-screen card (condensed, fits one phone screen).
 function renderReportCard(){
-  const name = nameInput.value.trim() || "(unnamed speaker)";
+  const sp = getSpeaker();
+  const name = sp ? sp.nick : "(no speaker)";
+  const cls = sp ? sp.cls : "";
   const total = CRITERIA.reduce((sum,c)=>sum+state[c.key],0);
   let html = `<p class="rc-title">SWEP Impromptu Speech Report</p>
-    <div class="rc-meta"><span class="rc-speaker">${escapeHtml(name)}</span>
+    <div class="rc-meta"><span class="rc-speaker">${escapeHtml(name)}${cls?` <span style="font-weight:500;color:var(--ink-soft);font-size:.78em;">· ${escapeHtml(cls)}</span>`:""}</span>
     <span class="rc-total">${total} / 25</span></div>`;
   CRITERIA.forEach(c=>{
     const score = state[c.key];
@@ -524,7 +596,20 @@ function escapeHtml(s){
 }
 
 document.getElementById("produceBtn").addEventListener("click", ()=>{
-  // Validation
+  // Validation: speaker must be selected
+  const sp = getSpeaker();
+  if(!sp){
+    if(!classSelect.value){
+      showWarn("Please select a Class first.");
+      classSelect.focus();
+    } else {
+      showWarn("Please select a Nickname.");
+      nicknameSelect.focus();
+    }
+    document.querySelector(".roster-fields").scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
+  // Validation: all criteria rated
   const missing = CRITERIA.filter(c=>state[c.key]===null);
   if(missing.length){
     missing.forEach(c=>document.getElementById("card-"+c.key).classList.add("missing"));
@@ -563,7 +648,9 @@ copyBtn.addEventListener("click", async ()=>{
 
 // ---- Reset: strictly clear ALL DOM + JS state ----
 document.getElementById("resetBtn").addEventListener("click", ()=>{
-  nameInput.value = "";
+  classSelect.value = "";
+  classSelect.classList.add("placeholder");
+  populateNicknames("");          // resets + disables nickname dropdown
   reportText.value = "";
   reportCard.innerHTML = "";
   cardsEl.querySelectorAll('input[type="radio"]').forEach(r=>{ r.checked = false; });
@@ -573,7 +660,7 @@ document.getElementById("resetBtn").addEventListener("click", ()=>{
   hideWarn();
   updateProgress();
   window.scrollTo({top:0,behavior:"smooth"});
-  nameInput.focus();
+  classSelect.focus();
 });
 
 // ---- Match eyebrow width to the main title width ----
@@ -596,6 +683,7 @@ window.addEventListener("load", fitEyebrow);
 fitEyebrow();
 
 // ---- Init (no selections by default) ----
+populateClasses();
 buildCards();
 </script>
 </body>
